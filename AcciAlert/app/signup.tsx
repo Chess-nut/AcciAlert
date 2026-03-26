@@ -90,13 +90,13 @@ export default function SignUpScreen() {
     return { label: 'Strong', color: '#2E7D32', bars: 4 };
   };
 
-  // 🔴 Firebase sign up handler
+  // Firebase sign up handler
   const handleSignUp = async () => {
     if (!validate()) return;
 
     setLoading(true);
     try {
-      // 1. Create user in Firebase Auth
+      // Step 1: Create auth account
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         form.email.trim(),
@@ -104,10 +104,10 @@ export default function SignUpScreen() {
       );
       const user = userCredential.user;
 
-      // 2. Update display name in Firebase Auth
+      // Step 2: Set display name
       await updateProfile(user, { displayName: form.fullName.trim() });
 
-      // 3. Save extra user data to Firestore
+      // Step 3: Write to Firestore
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         fullName: form.fullName.trim(),
@@ -118,20 +118,20 @@ export default function SignUpScreen() {
         resolvedReports: 0,
       });
 
-      Alert.alert('Account Created!', 'Welcome to AcciAlert.', [
-        { text: 'Continue', onPress: () => router.push('/login') },
-      ]);
+      // ✅ Success — stop loader then navigate immediately (no Alert delay)
+      setLoading(false);
+      router.replace('/login' as any);
+
     } catch (error: any) {
-      // Map Firebase error codes to user-friendly messages
+      setLoading(false);
       const msg: Record<string, string> = {
-        'auth/email-already-in-use': 'This email is already registered. Please sign in.',
+        'auth/email-already-in-use': 'This email is already registered. Please sign in instead.',
         'auth/invalid-email': 'Invalid email address.',
         'auth/weak-password': 'Password is too weak.',
-        'auth/network-request-failed': 'No internet connection. Please try again.',
+        'auth/network-request-failed': 'No internet connection.',
+        'auth/operation-not-allowed': 'Email/password sign-up is not enabled. Enable it in Firebase Console → Authentication → Sign-in method.',
       };
-      Alert.alert('Sign Up Failed', msg[error.code] ?? error.message);
-    } finally {
-      setLoading(false);
+      Alert.alert('Sign Up Failed', msg[error.code] ?? `${error.message} (${error.code})`);
     }
   };
 
