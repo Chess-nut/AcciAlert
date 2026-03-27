@@ -34,13 +34,13 @@ export default function LoginScreen() {
     return valid;
   };
 
-  // 🔴 Firebase login handler
   const handleLogin = async () => {
     if (!validate()) return;
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      router.replace('/tabs/index' as any);
+      // ✅ Navigates into the (tabs) route group → lands on (tabs)/index
+      router.replace('/(tabs)' as any);
     } catch (error: any) {
       const msg: Record<string, string> = {
         'auth/user-not-found': 'No account found with this email.',
@@ -56,7 +56,6 @@ export default function LoginScreen() {
     }
   };
 
-  // 🔴 Forgot password handler
   const handleForgotPassword = () => {
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) {
       Alert.alert('Reset Password', 'Please enter your email address first, then tap Forgot Password.');
@@ -124,7 +123,6 @@ export default function LoginScreen() {
             </View>
             {!!passwordError && <View style={styles.errorRow}><MaterialCommunityIcons name={"alert-circle-outline" as any} size={13} color="#B71C1C" /><Text style={styles.errorText}>{passwordError}</Text></View>}
 
-            {/* Forgot password — now calls Firebase */}
             <TouchableOpacity style={styles.forgotRow} onPress={handleForgotPassword}>
               <Text style={styles.forgotText}>Forgot Password?</Text>
             </TouchableOpacity>

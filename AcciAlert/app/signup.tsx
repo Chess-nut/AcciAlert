@@ -119,7 +119,7 @@ export default function SignUpScreen() {
       });
 
       setLoading(false);
-      router.replace('/(tabs)/profile' as any);
+      router.replace('/(tabs)' as any);
       useEffect(() => {
       console.log("Welcome user!");
     }, []);
