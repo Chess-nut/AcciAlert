@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -9,11 +9,41 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { getAuth , signOut} from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../../firebaseconfig";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [fullName, setFullName] = useState('User');
 
+  useEffect(() => {
+  const auth = getAuth();
+  const user = auth.currentUser;
+  console.log("Current user:", user); // Debug: Check if user is logged in
+  if (user) {
+    const userDoc = doc(db, 'users', user.uid);
+    getDoc(userDoc).then((docSnap) => {
+      console.log("Document snapshot:", docSnap.exists(), docSnap.data()); // Debug: Check if doc exists and data
+      if (docSnap.exists()) {
+        setFullName(docSnap.data().fullName || 'User');
+      } else {
+        console.log("User document does not exist");
+      }
+    }).catch((error) => {
+      console.error("Error fetching user data:", error);
+    });
+  } else {
+    console.log("No current user");
+  }
+}, []);
+
+
+
+
+  
   const profileMenuItems = [
     {
       icon: "account",
@@ -91,20 +121,42 @@ export default function ProfileScreen() {
     },
   ];
 
+  
+
+
+
   const handleLogout = () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: () => router.replace("/"),
-        },
-      ]
-    );
-  };
+  Alert.alert("Logout", "Are you sure you want to logout?", [
+    { text: "Cancel", style: "cancel" },
+    {
+      text: "Logout",
+      style: "destructive",
+      onPress: async () => {
+        try {
+          console.log("LOGOUT: start");
+          const auth = getAuth();
+          await signOut(auth);
+          console.log("LOGOUT: signed out");
+
+          await AsyncStorage.clear();
+          console.log("LOGOUT: storage cleared");
+
+          setFullName("User");
+          setNotificationsEnabled(true);
+
+          // try both forms, one of them should work in this structure
+          router.replace("/login");
+          // router.replace("login");
+          // router.push("/login");
+          console.log("LOGOUT: navigation called");
+        } catch (error) {
+          console.error("Logout failed:", error);
+          Alert.alert("Logout failed", (error as Error).message);
+        }
+      },
+    },
+  ]);
+};
 
   const renderMenuItem = (item: any, index: number) => (
     <TouchableOpacity
@@ -144,7 +196,7 @@ export default function ProfileScreen() {
             <MaterialCommunityIcons name="check-circle" size={20} color="#4caf50" />
           </View>
         </View>
-        <Text style={styles.profileName}>Maria Santos</Text>
+        <Text style={styles.profileName}>{fullName}</Text>
         <View style={styles.verifiedRow}>
           <MaterialCommunityIcons name="shield-check" size={14} color="rgba(255,255,255,0.7)" />
           <Text style={styles.profileEmail}>Verified User</Text>
