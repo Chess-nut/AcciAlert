@@ -12,3 +12,11 @@ Features:
 Tech Used:
  - React Native
  - Java Script
+
+
+
+
+setting up firebase
+ - npx install firebase
+ - npx expo install @react-native-async-storage/async-storage
+ - npx expo install react-native-toast-message

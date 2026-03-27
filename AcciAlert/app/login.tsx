@@ -40,7 +40,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      router.replace('/(tabs)' as any);
+      router.replace('/tabs/index' as any);
     } catch (error: any) {
       const msg: Record<string, string> = {
         'auth/user-not-found': 'No account found with this email.',

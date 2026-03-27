@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, SafeAreaView,
   StatusBar, TextInput, KeyboardAvoidingView, Platform,
@@ -118,9 +118,11 @@ export default function SignUpScreen() {
         resolvedReports: 0,
       });
 
-      // ✅ Success — stop loader then navigate immediately (no Alert delay)
       setLoading(false);
-      router.replace('/login' as any);
+      router.replace('/(tabs)/profile' as any);
+      useEffect(() => {
+      console.log("Welcome user!");
+    }, []);
 
     } catch (error: any) {
       setLoading(false);
