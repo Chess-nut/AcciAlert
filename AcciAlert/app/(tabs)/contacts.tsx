@@ -21,17 +21,9 @@ export default function ContactsScreen() {
     },
     {
       name: "Police Hotline",
-      number: "911",
+      number: "117",
       type: "Police",
       icon: "police-badge",
-      color: "#1565C0",
-      bgColor: "#e3f2fd",
-    },
-    {
-      name: "PNP Hotline",
-      number: "117",
-      type: "PNP Direct Line",
-      icon: "shield-outline",
       color: "#1565C0",
       bgColor: "#e3f2fd",
     },
