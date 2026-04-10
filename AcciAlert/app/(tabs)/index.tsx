@@ -14,10 +14,10 @@ export default function HomeScreen() {
   const router = useRouter();
 
   const emergencyItems = [
-    { label: "Emergency", number: "911", icon: "fire-truck", color: "#B71C1C" },
-    { label: "Police", number: "117", icon: "police-badge", color: "#1565C0" },
-    { label: "Ambulance", number: "143", icon: "medical-bag", color: "#2E7D32" },
-    { label: "Fire Dept", number: "160", icon: "fire-truck", color: "#B71C1C" },
+    { emoji: "🚨", label: "Emergency 911", number: "911" },
+    { emoji: "👮", label: "Police", number: "117" },
+    { emoji: "🚒", label: "Fire Dept", number: "116" },
+    { emoji: "🚑", label: "Ambulance", number: "143" },
   ];
 
   const quickStats = [
@@ -35,6 +35,10 @@ export default function HomeScreen() {
         { text: "Call", onPress: () => Linking.openURL(`tel:${number}`) },
       ]
     );
+  };
+
+  const handleDial = (number: string) => {
+    console.log(number);
   };
 
   const styles = StyleSheet.create({
@@ -133,66 +137,61 @@ export default function HomeScreen() {
       paddingHorizontal: 16,
       marginBottom: 20,
     },
-    sectionTitle: {
+    quickDialContainer: {
+      backgroundColor: "#fff1f1",
+      borderRadius: 15,
+      borderWidth: 1,
+      borderColor: "#ef9a9a",
+      padding: 14,
+    },
+    quickDialHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 12,
+    },
+    quickDialTitle: {
       fontSize: 16,
       fontWeight: "700",
-      marginBottom: 12,
       color: "#1a1a1a",
     },
-    emergencyButton: {
-      padding: 16,
-      borderRadius: 12,
-      marginBottom: 10,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 14,
-      elevation: 3,
-      shadowColor: "#000",
-      shadowOpacity: 0.15,
-      shadowRadius: 6,
-    },
-    emergencyIconWrapper: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: "rgba(255,255,255,0.2)",
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    emergencyInfo: {
-      flex: 1,
-    },
-    emergencyLabel: {
-      color: "white",
-      fontWeight: "700",
-      fontSize: 16,
-    },
-    emergencyNumber: {
-      color: "rgba(255,255,255,0.75)",
-      fontSize: 12,
-      marginTop: 2,
-    },
-    quickActionsGrid: {
+    quickDialGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 12,
+      justifyContent: "space-between",
+      gap: 10,
     },
-    actionCard: {
-      width: "47%",
+    emergencyButton: {
+      width: "48%",
+      minHeight: 120,
       backgroundColor: "#fff",
       borderRadius: 12,
-      padding: 16,
+      borderWidth: 1,
+      borderColor: "#f0f0f0",
+      paddingVertical: 14,
+      paddingHorizontal: 12,
       alignItems: "center",
+      justifyContent: "center",
       gap: 10,
       elevation: 2,
       shadowColor: "#000",
-      shadowOpacity: 0.07,
+      shadowOpacity: 0.08,
       shadowRadius: 4,
     },
-    actionLabel: {
-      fontSize: 13,
+    emergencyEmoji: {
+      fontSize: 30,
+      lineHeight: 34,
+    },
+    emergencyLabel: {
+      color: "#444",
       fontWeight: "600",
-      color: "#333",
+      fontSize: 12,
+      textAlign: "center",
+    },
+    emergencyNumber: {
+      color: "#B71C1C",
+      fontSize: 14,
+      fontWeight: "800",
       textAlign: "center",
     },
     alertBanner: {
@@ -260,24 +259,27 @@ export default function HomeScreen() {
 
       {/* Quick Emergency Dial */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Quick Emergency Dial</Text>
-        {emergencyItems.map((item) => (
-          <TouchableOpacity
-            key={item.label}
-            style={[styles.emergencyButton, { backgroundColor: item.color }]}
-            onPress={() => handleCall(item.number, item.label)}
-            activeOpacity={0.85}
-          >
-            <View style={styles.emergencyIconWrapper}>
-              <MaterialCommunityIcons name={item.icon as any} size={26} color="#fff" />
-            </View>
-            <View style={styles.emergencyInfo}>
-              <Text style={styles.emergencyLabel}>{item.label}</Text>
-              <Text style={styles.emergencyNumber}>Tap to call {item.number}</Text>
-            </View>
-            <MaterialCommunityIcons name="phone" size={24} color="rgba(255,255,255,0.8)" />
-          </TouchableOpacity>
-        ))}
+        <View style={styles.quickDialContainer}>
+          <View style={styles.quickDialHeader}>
+            <MaterialCommunityIcons name="phone" size={20} color="#B71C1C" />
+            <Text style={styles.quickDialTitle}>Quick Emergency Dial</Text>
+          </View>
+
+          <View style={styles.quickDialGrid}>
+            {emergencyItems.map((item) => (
+              <TouchableOpacity
+                key={item.label}
+                style={styles.emergencyButton}
+                onPress={() => handleDial(item.number)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.emergencyEmoji}>{item.emoji}</Text>
+                <Text style={styles.emergencyLabel}>{item.label}</Text>
+                <Text style={styles.emergencyNumber}>{item.number}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
       </View>
 
       {/* Recent Alert Banner */}
