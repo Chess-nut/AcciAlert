@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, SafeAreaView,
   StatusBar, TextInput, KeyboardAvoidingView, Platform,
@@ -6,7 +6,6 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-
 
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -59,12 +58,10 @@ export default function SignUpScreen() {
     else if (!/\S+@\S+\.\S+/.test(form.email)) { newErrors.email = 'Enter a valid email address.'; valid = false; }
 
     if (!form.phone.trim()) { newErrors.phone = 'Phone number is required.'; valid = false; }
-    else if (!/^[0-9+\-\s]{7,15}$/.test(form.phone.trim())) { newErrors.phone = 'Enter a valid phone number.'; valid = false; }
+    else if (!/^[0-9+\-\s()]{7,20}$/.test(form.phone.trim())) { newErrors.phone = 'Enter a valid phone number.'; valid = false; }
 
     if (!form.password) { newErrors.password = 'Password is required.'; valid = false; }
-    else if (form.password.length < 8) { newErrors.password = 'Password must be at least 8 characters.'; valid = false; }
-    else if (!/[A-Z]/.test(form.password)) { newErrors.password = 'Include at least one uppercase letter.'; valid = false; }
-    else if (!/[0-9]/.test(form.password)) { newErrors.password = 'Include at least one number.'; valid = false; }
+    else if (form.password.length < 6) { newErrors.password = 'Password must be at least 6 characters.'; valid = false; }
 
     if (!form.confirmPassword) { newErrors.confirmPassword = 'Please confirm your password.'; valid = false; }
     else if (form.password !== form.confirmPassword) { newErrors.confirmPassword = 'Passwords do not match.'; valid = false; }
@@ -73,6 +70,17 @@ export default function SignUpScreen() {
     else { setTermsError(''); }
 
     setErrors(newErrors);
+    if (!valid) {
+      const firstError =
+        newErrors.fullName ||
+        newErrors.email ||
+        newErrors.phone ||
+        newErrors.password ||
+        newErrors.confirmPassword ||
+        termsError ||
+        'Please complete the form correctly.';
+      Alert.alert('Incomplete Form', firstError);
+    }
     return valid;
   };
 
@@ -96,10 +104,12 @@ export default function SignUpScreen() {
 
     setLoading(true);
     try {
+      const normalizedEmail = form.email.trim().toLowerCase();
+
       // Step 1: Create auth account
       const userCredential = await createUserWithEmailAndPassword(
         auth,
-        form.email.trim(),
+        normalizedEmail,
         form.password
       );
       const user = userCredential.user;
@@ -107,25 +117,25 @@ export default function SignUpScreen() {
       // Step 2: Set display name
       await updateProfile(user, { displayName: form.fullName.trim() });
 
-      // Step 3: Write to Firestore
-      await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid,
-        fullName: form.fullName.trim(),
-        email: form.email.trim().toLowerCase(),
-        phone: form.phone.trim(),
-        createdAt: serverTimestamp(),
-        totalReports: 0,
-        resolvedReports: 0,
-      });
+      // Step 3: Write to Firestore (non-blocking for account creation)
+      try {
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          fullName: form.fullName.trim(),
+          email: normalizedEmail,
+          phone: form.phone.trim(),
+          createdAt: serverTimestamp(),
+          totalReports: 0,
+          resolvedReports: 0,
+        });
+      } catch (profileError: any) {
+        console.warn('Profile save failed after signup:', profileError?.code, profileError?.message);
+      }
 
-      setLoading(false);
+      // Step 4: Navigate to app
       router.replace('/(tabs)' as any);
-      useEffect(() => {
-      console.log("Welcome user!");
-    }, []);
 
     } catch (error: any) {
-      setLoading(false);
       const msg: Record<string, string> = {
         'auth/email-already-in-use': 'This email is already registered. Please sign in instead.',
         'auth/invalid-email': 'Invalid email address.',
@@ -134,6 +144,8 @@ export default function SignUpScreen() {
         'auth/operation-not-allowed': 'Email/password sign-up is not enabled. Enable it in Firebase Console → Authentication → Sign-in method.',
       };
       Alert.alert('Sign Up Failed', msg[error.code] ?? `${error.message} (${error.code})`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -210,7 +222,7 @@ export default function SignUpScreen() {
               <Text style={styles.label}>Password</Text>
               <View style={[styles.inputWrapper, focused.password && styles.inputWrapperFocused, !!errors.password && styles.inputWrapperError]}>
                 <MaterialCommunityIcons name={"lock-outline" as any} size={20} color={errors.password ? '#B71C1C' : focused.password ? '#B71C1C' : '#bbb'} style={styles.inputIcon} />
-                <TextInput style={styles.input} placeholder="Min. 8 chars, 1 uppercase, 1 number" placeholderTextColor="#c8c8c8" secureTextEntry={!showPassword} autoCapitalize="none" value={form.password} onChangeText={(t) => update('password', t)} onFocus={() => setFocus('password', true)} onBlur={() => setFocus('password', false)} />
+                <TextInput style={styles.input} placeholder="Minimum 6 characters" placeholderTextColor="#c8c8c8" secureTextEntry={!showPassword} autoCapitalize="none" value={form.password} onChangeText={(t) => update('password', t)} onFocus={() => setFocus('password', true)} onBlur={() => setFocus('password', false)} />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
                   <MaterialCommunityIcons name={(showPassword ? 'eye-off-outline' : 'eye-outline') as any} size={20} color="#bbb" />
                 </TouchableOpacity>

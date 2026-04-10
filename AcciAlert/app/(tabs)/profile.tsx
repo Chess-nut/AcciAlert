@@ -9,9 +9,9 @@ import {
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { getAuth , signOut} from "firebase/auth";
+import { signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "../../firebaseconfig";
+import { auth, db } from "../../firebaseconfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function ProfileScreen() {
@@ -20,7 +20,6 @@ export default function ProfileScreen() {
   const [fullName, setFullName] = useState('User');
 
   useEffect(() => {
-  const auth = getAuth();
   const user = auth.currentUser;
   console.log("Current user:", user); // Debug: Check if user is logged in
   if (user) {
@@ -121,42 +120,29 @@ export default function ProfileScreen() {
     },
   ];
 
-  
+    const handleLogout = async () => {
+      try {
+        console.log("LOGOUT: start");
+        await signOut(auth);
+        console.log("LOGOUT: signed out");
 
-
-
-  const handleLogout = () => {
-  Alert.alert("Logout", "Are you sure you want to logout?", [
-    { text: "Cancel", style: "cancel" },
-    {
-      text: "Logout",
-      style: "destructive",
-      onPress: async () => {
         try {
-          console.log("LOGOUT: start");
-          const auth = getAuth();
-          await signOut(auth);
-          console.log("LOGOUT: signed out");
-
           await AsyncStorage.clear();
           console.log("LOGOUT: storage cleared");
-
-          setFullName("User");
-          setNotificationsEnabled(true);
-
-          // try both forms, one of them should work in this structure
-          router.replace("/login");
-          // router.replace("login");
-          // router.push("/login");
-          console.log("LOGOUT: navigation called");
-        } catch (error) {
-          console.error("Logout failed:", error);
-          Alert.alert("Logout failed", (error as Error).message);
+        } catch (storageError) {
+          console.warn("LOGOUT: storage clear failed", storageError);
         }
-      },
-    },
-  ]);
-};
+
+        setFullName("User");
+        setNotificationsEnabled(true);
+
+        router.push("/login");
+        console.log("LOGOUT: navigation called");
+      } catch (error) {
+        console.error("Logout failed:", error);
+        Alert.alert("Logout failed", (error as Error).message);
+      }
+    };
 
   const renderMenuItem = (item: any, index: number) => (
     <TouchableOpacity
@@ -234,7 +220,7 @@ export default function ProfileScreen() {
       </View>
 
       {/* Logout */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+      <TouchableOpacity style={styles.logoutButton} onPress={() => void handleLogout()}>
         <MaterialCommunityIcons name="logout" size={20} color="white" />
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
