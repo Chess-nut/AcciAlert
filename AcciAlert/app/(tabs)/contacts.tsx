@@ -104,11 +104,35 @@ export default function ContactsScreen() {
         </TouchableOpacity>
       ))}
 
-      <View style={styles.noteCard}>
-        <MaterialCommunityIcons name="information-outline" size={18} color="#1565C0" />
-        <Text style={styles.noteText}>
-          Save these numbers ahead of time. During emergencies, every second counts.
-        </Text>
+      <View style={styles.infoTipsContainer}>
+
+        <View style={styles.tipsHeader}>
+          <MaterialCommunityIcons name="shield-check-outline" size={18} color="#1565C0" />
+          <Text style={styles.tipsHeaderText}>Safety Tips</Text>
+        </View>
+
+        <View style={styles.tipsList}>
+          <View style={styles.tipRow}>
+            <Text style={styles.tipBullet}>•</Text>
+            <Text style={styles.tipText}>Stay calm and assess the situation</Text>
+          </View>
+          <View style={styles.tipRow}>
+            <Text style={styles.tipBullet}>•</Text>
+            <Text style={styles.tipText}>Move to a safe location if possible</Text>
+          </View>
+          <View style={styles.tipRow}>
+            <Text style={styles.tipBullet}>•</Text>
+            <Text style={styles.tipText}>Call the appropriate emergency number</Text>
+          </View>
+          <View style={styles.tipRow}>
+            <Text style={styles.tipBullet}>•</Text>
+            <Text style={styles.tipText}>Provide clear location details</Text>
+          </View>
+          <View style={styles.tipRow}>
+            <Text style={styles.tipBullet}>•</Text>
+            <Text style={styles.tipText}>Follow dispatcher instructions</Text>
+          </View>
+        </View>
       </View>
 
       <View style={{ height: 20 }} />
@@ -199,19 +223,44 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#fff",
   },
-  noteCard: {
+  infoTipsContainer: {
+    backgroundColor: "#eef6ff",
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: "#d7e9ff",
+  },
+  
+  tipsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  tipsHeaderText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0d47a1",
+  },
+  tipsList: {
+    gap: 6,
+  },
+  tipRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: "#e3f2fd",
-    borderRadius: 10,
-    padding: 14,
-    gap: 10,
-    marginTop: 4,
   },
-  noteText: {
+  tipBullet: {
+    width: 16,
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#1565C0",
+    fontWeight: "700",
+  },
+  tipText: {
     flex: 1,
     fontSize: 13,
-    color: "#1565C0",
-    lineHeight: 18,
+    lineHeight: 20,
+    color: "#24507f",
   },
 });
