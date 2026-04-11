@@ -1,16 +1,18 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
 
 export default function MapScreen() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const webViewRef = useRef<any>(null);
 
   const incidents = [
@@ -64,6 +66,18 @@ export default function MapScreen() {
     },
   ];
 
+  // Filter incidents based on search query
+  const filteredIncidents = useMemo(() => {
+    if (!searchQuery.trim()) return incidents;
+    
+    const query = searchQuery.toLowerCase();
+    return incidents.filter((incident) =>
+      incident.location.toLowerCase().includes(query) ||
+      incident.type.toLowerCase().includes(query) ||
+      incident.description.toLowerCase().includes(query)
+    );
+  }, [searchQuery]);
+
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case "Critical": return "#B71C1C";
@@ -84,7 +98,7 @@ export default function MapScreen() {
 
   const generateMapHTML = () => {
     const markersJSON = JSON.stringify(
-      incidents.map((incident) => ({
+      filteredIncidents.map((incident) => ({
         id: incident.id,
         lat: incident.latitude,
         lng: incident.longitude,
@@ -160,14 +174,40 @@ export default function MapScreen() {
 
       {/* Incidents List */}
       <ScrollView style={styles.incidentsList} showsVerticalScrollIndicator={false}>
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <MaterialCommunityIcons name="magnify" size={20} color="#999" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search location, incident type..."
+            placeholderTextColor="#ccc"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery ? (
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <MaterialCommunityIcons name="close-circle" size={18} color="#999" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
         <View style={styles.listHeader}>
-          <Text style={styles.incidentsTitle}>Nearby Incidents</Text>
+          <Text style={styles.incidentsTitle}>
+            {searchQuery ? "Search Results" : "Nearby Incidents"}
+          </Text>
           <View style={styles.countBadge}>
-            <Text style={styles.countText}>{incidents.length} active</Text>
+            <Text style={styles.countText}>{filteredIncidents.length} active</Text>
           </View>
         </View>
 
-        {incidents.map((incident) => (
+        {filteredIncidents.length === 0 ? (
+          <View style={styles.noResultsContainer}>
+            <MaterialCommunityIcons name="magnify" size={48} color="#ccc" />
+            <Text style={styles.noResultsText}>No incidents found</Text>
+            <Text style={styles.noResultsSubtext}>Try searching for a different location or incident type</Text>
+          </View>
+        ) : (
+          filteredIncidents.map((incident) => (
           <TouchableOpacity
             key={incident.id}
             style={[
@@ -223,7 +263,8 @@ export default function MapScreen() {
               color="#ccc"
             />
           </TouchableOpacity>
-        ))}
+          ))
+        )}
         <View style={{ height: 20 }} />
       </ScrollView>
     </View>
@@ -363,5 +404,42 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#B71C1C",
     fontWeight: "700",
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 16,
+    height: 42,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.07,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#1a1a1a",
+    paddingVertical: 8,
+  },
+  noResultsContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+    gap: 12,
+  },
+  noResultsText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1a1a1a",
+  },
+  noResultsSubtext: {
+    fontSize: 13,
+    color: "#999",
+    textAlign: "center",
+    paddingHorizontal: 20,
   },
 });
