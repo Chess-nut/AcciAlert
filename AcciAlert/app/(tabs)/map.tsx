@@ -1,19 +1,23 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
 
 export default function MapScreen() {
+  const router = useRouter();
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const webViewRef = useRef<any>(null);
 
-  const incidents = [
+  const incidents = useMemo(() => [
     {
       id: 1,
       type: "Traffic Accident",
@@ -25,6 +29,9 @@ export default function MapScreen() {
       description: "Multi-vehicle collision blocking two lanes",
       icon: "car-emergency",
       time: "2 hrs ago",
+      date: "04/11/2026",
+      reporter: "John Doe",
+      status: "Reported",
     },
     {
       id: 2,
@@ -37,6 +44,9 @@ export default function MapScreen() {
       description: "Large pothole causing delays and vehicle damage",
       icon: "alert-circle",
       time: "1 hr ago",
+      date: "04/11/2026",
+      reporter: "Jane Smith",
+      status: "In Review",
     },
     {
       id: 3,
@@ -49,6 +59,9 @@ export default function MapScreen() {
       description: "Heavy traffic volume, expect 30-min delays",
       icon: "car-multiple",
       time: "30 min ago",
+      date: "04/11/2026",
+      reporter: "Traffic Department",
+      status: "Resolved",
     },
     {
       id: 4,
@@ -61,8 +74,59 @@ export default function MapScreen() {
       description: "Knee-deep floodwater, road impassable",
       icon: "water",
       time: "45 min ago",
+      date: "04/11/2026",
+      reporter: "City Council",
+      status: "In Review",
     },
-  ];
+    {
+      id: 5,
+      type: "Road Debris",
+      severity: "Low",
+      location: "Makati Ave",
+      latitude: 14.5533,
+      longitude: 121.0235,
+      coordinates: "14.5533° N, 121.0235° E",
+      description: "Broken glass and debris scattered on roadway",
+      icon: "alert-octagon",
+      time: "15 min ago",
+      date: "04/11/2026",
+      reporter: "Anonymous",
+      status: "Reported",
+    },
+  ], []);
+
+  // Filter incidents based on search query
+  const filteredIncidents = useMemo(() => {
+    if (!searchQuery.trim()) return incidents;
+    
+    const query = searchQuery.toLowerCase();
+    return incidents.filter((incident) =>
+      incident.location.toLowerCase().includes(query) ||
+      incident.type.toLowerCase().includes(query) ||
+      incident.description.toLowerCase().includes(query)
+    );
+  }, [searchQuery, incidents]);
+
+  const handleViewFullReport = (incident: typeof incidents[0]) => {
+    router.push({
+      pathname: "/incidentdetail",
+      params: {
+        id: incident.id,
+        type: incident.type,
+        severity: incident.severity,
+        location: incident.location,
+        latitude: incident.latitude,
+        longitude: incident.longitude,
+        coordinates: incident.coordinates,
+        description: incident.description,
+        icon: incident.icon,
+        time: incident.time,
+        date: incident.date,
+        reporter: incident.reporter,
+        status: incident.status,
+      },
+    });
+  };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -84,7 +148,7 @@ export default function MapScreen() {
 
   const generateMapHTML = () => {
     const markersJSON = JSON.stringify(
-      incidents.map((incident) => ({
+      filteredIncidents.map((incident) => ({
         id: incident.id,
         lat: incident.latitude,
         lng: incident.longitude,
@@ -160,14 +224,40 @@ export default function MapScreen() {
 
       {/* Incidents List */}
       <ScrollView style={styles.incidentsList} showsVerticalScrollIndicator={false}>
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <MaterialCommunityIcons name="magnify" size={20} color="#999" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search location, incident type..."
+            placeholderTextColor="#ccc"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery ? (
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <MaterialCommunityIcons name="close-circle" size={18} color="#999" />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
         <View style={styles.listHeader}>
-          <Text style={styles.incidentsTitle}>Nearby Incidents</Text>
+          <Text style={styles.incidentsTitle}>
+            {searchQuery ? "Search Results" : "Nearby Incidents"}
+          </Text>
           <View style={styles.countBadge}>
-            <Text style={styles.countText}>{incidents.length} active</Text>
+            <Text style={styles.countText}>{filteredIncidents.length} active</Text>
           </View>
         </View>
 
-        {incidents.map((incident) => (
+        {filteredIncidents.length === 0 ? (
+          <View style={styles.noResultsContainer}>
+            <MaterialCommunityIcons name="magnify" size={48} color="#ccc" />
+            <Text style={styles.noResultsText}>No incidents found</Text>
+            <Text style={styles.noResultsSubtext}>Try searching for a different location or incident type</Text>
+          </View>
+        ) : (
+          filteredIncidents.map((incident) => (
           <TouchableOpacity
             key={incident.id}
             style={[
@@ -210,7 +300,10 @@ export default function MapScreen() {
                     📍 {incident.coordinates}
                   </Text>
                   <Text style={styles.incidentDescription}>{incident.description}</Text>
-                  <TouchableOpacity style={styles.detailsButton}>
+                  <TouchableOpacity 
+                    style={styles.detailsButton}
+                    onPress={() => handleViewFullReport(incident)}
+                  >
                     <Text style={styles.detailsButtonText}>View Full Report</Text>
                     <MaterialCommunityIcons name="arrow-right" size={16} color="#B71C1C" />
                   </TouchableOpacity>
@@ -223,7 +316,8 @@ export default function MapScreen() {
               color="#ccc"
             />
           </TouchableOpacity>
-        ))}
+          ))
+        )}
         <View style={{ height: 20 }} />
       </ScrollView>
     </View>
@@ -363,5 +457,42 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#B71C1C",
     fontWeight: "700",
+  },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 16,
+    height: 42,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.07,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#1a1a1a",
+    paddingVertical: 8,
+  },
+  noResultsContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+    gap: 12,
+  },
+  noResultsText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1a1a1a",
+  },
+  noResultsSubtext: {
+    fontSize: 13,
+    color: "#999",
+    textAlign: "center",
+    paddingHorizontal: 20,
   },
 });
