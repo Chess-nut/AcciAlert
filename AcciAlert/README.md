@@ -10,7 +10,21 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm install
    ```
 
-2. Start the app
+2. Set up environment variables
+
+   Copy `.env.example` to `.env` and fill in your configuration values:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Then edit `.env` and add your Firebase and Supabase credentials:
+   - Firebase API Key, Auth Domain, Project ID, etc. (from Firebase Console)
+   - Supabase URL and Anon Key (from Supabase Project Settings)
+
+   **⚠️ Important:** Never commit the `.env` file to version control. The `.env` file is already in `.gitignore`.
+
+3. Start the app
 
    ```bash
    npx expo start
