@@ -50,6 +50,7 @@ export default function ProfileScreen() {
       description: "View and edit your profile",
       color: "#1565C0",
       bgColor: "#e3f2fd",
+      route: "/PersonalInformation",
     },
     {
       icon: "phone",

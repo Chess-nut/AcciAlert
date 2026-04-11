@@ -239,10 +239,6 @@ export default function HomeScreen() {
               <Text style={styles.tagline}>Road Safety Response</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.sosButton} onPress={() => startDummyCall("Emergency", "911")}>
-            <MaterialCommunityIcons name="alert-circle" size={20} color="#fff" />
-            <Text style={styles.sosText}>SOS</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Stats Row — now live from Firestore */}
