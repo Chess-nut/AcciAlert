@@ -19,9 +19,29 @@ const ADMIN_EMAIL_ALIASES = [
   'accialert123@accialert.com',
 ];
 
+const ADMIN_EMAIL_CANDIDATES = [
+  'acciaclert123@accialert.com',
+  'accialert123@accialert.com',
+];
+
 const isAdminShortcutCredentials = (email: string, password: string) => {
   const normalizedEmail = email.trim().toLowerCase();
   return ADMIN_EMAIL_ALIASES.includes(normalizedEmail) && password === ADMIN_PASSWORD;
+};
+
+const getAdminSignInCandidates = (email: string) => {
+  const normalizedEmail = email.trim().toLowerCase();
+  const candidates = new Set<string>();
+
+  if (normalizedEmail.includes('@')) {
+    candidates.add(normalizedEmail);
+  }
+
+  for (const candidate of ADMIN_EMAIL_CANDIDATES) {
+    candidates.add(candidate);
+  }
+
+  return Array.from(candidates);
 };
 
 export default function LoginScreen() {
@@ -39,7 +59,7 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   // Forgot password modal state
-  const [, setForgotModalVisible] = useState(false);
+  const [forgotModalVisible, setForgotModalVisible] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetEmailError, setResetEmailError] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
@@ -67,8 +87,34 @@ export default function LoginScreen() {
     if (!validate()) return;
 
     if (isAdminShortcutCredentials(email, password)) {
-      await AsyncStorage.setItem('isAdmin', 'true');
-      router.replace('/(admin)/AdminDashboard' as any);
+      setLoading(true);
+      try {
+        const adminCandidates = getAdminSignInCandidates(email);
+        let signedIn = false;
+
+        for (const adminEmail of adminCandidates) {
+          try {
+            await signInWithEmailAndPassword(auth, adminEmail, password);
+            signedIn = true;
+            break;
+          } catch {
+            // Try the next admin email candidate.
+          }
+        }
+
+        if (!signedIn) {
+          Alert.alert(
+            'Admin Login Failed',
+            'Admin credentials were recognized, but Firebase authentication failed. Create this admin user in Firebase Authentication to access admin data in Expo Go.'
+          );
+          return;
+        }
+
+        await AsyncStorage.setItem('isAdmin', 'true');
+        router.replace('/(admin)/AdminDashboard' as any);
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
@@ -143,7 +189,7 @@ export default function LoginScreen() {
 
       {/* ── Forgot Password Modal ── */}
       <Modal
-        visible={false}
+        visible={forgotModalVisible}
         transparent
         animationType="fade"
         onRequestClose={closeForgotModal}
@@ -309,9 +355,9 @@ export default function LoginScreen() {
                 </Text>
               ) : <View />}
 
-              <Pressable onPress={openForgotModal} hitSlop={8}>
+              <TouchableOpacity onPress={openForgotModal} activeOpacity={0.7} hitSlop={8}>
                 <Text style={styles.forgotText}>Forgot Password?</Text>
-              </Pressable>
+              </TouchableOpacity>
             </View>
 
             {/* Login button */}

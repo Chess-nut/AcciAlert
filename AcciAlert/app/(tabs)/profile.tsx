@@ -10,39 +10,60 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, onSnapshot } from "firebase/firestore";
 import { auth, db } from "../../firebaseconfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [fullName, setFullName] = useState('User');
+  const [fullName, setFullName] = useState("User");
+  const [totalReports, setTotalReports]     = useState(0);
+  const [resolvedReports, setResolvedReports] = useState(0);
 
+  // ─── Fetch user profile ────────────────────────────────────────────────────
   useEffect(() => {
-  const user = auth.currentUser;
-  console.log("Current user:", user); // Debug: Check if user is logged in
-  if (user) {
-    const userDoc = doc(db, 'users', user.uid);
-    getDoc(userDoc).then((docSnap) => {
-      console.log("Document snapshot:", docSnap.exists(), docSnap.data()); // Debug: Check if doc exists and data
-      if (docSnap.exists()) {
-        setFullName(docSnap.data().fullName || 'User');
-      } else {
-        console.log("User document does not exist");
-      }
-    }).catch((error) => {
-      console.error("Error fetching user data:", error);
-    });
-  } else {
-    console.log("No current user");
-  }
-}, []);
+    const user = auth.currentUser;
+    if (!user) return;
 
+    const userDoc = doc(db, "users", user.uid);
+    getDoc(userDoc)
+      .then((docSnap) => {
+        if (docSnap.exists()) {
+          setFullName(docSnap.data().fullName || "User");
+        }
+      })
+      .catch((error) => console.error("Error fetching user data:", error));
+  }, []);
 
+  // ─── Live report stats for this user ──────────────────────────────────────
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (!user) return;
 
+    const q = query(
+      collection(db, "reports"),
+      where("userId", "==", user.uid)
+    );
 
-  
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        setTotalReports(snapshot.size);
+        setResolvedReports(
+          snapshot.docs.filter(
+            (d) => d.data().status?.toLowerCase() === "resolved"
+          ).length
+        );
+      },
+      (error) => console.error("Error fetching report stats:", error)
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // ─── Menu items ────────────────────────────────────────────────────────────
+
   const profileMenuItems = [
     {
       icon: "account",
@@ -88,29 +109,21 @@ export default function ProfileScreen() {
     },
   ];
 
-    const handleLogout = async () => {
-      try {
-        console.log("LOGOUT: start");
-        await signOut(auth);
-        console.log("LOGOUT: signed out");
+  // ─── Logout ────────────────────────────────────────────────────────────────
 
-        try {
-          await AsyncStorage.clear();
-          console.log("LOGOUT: storage cleared");
-        } catch (storageError) {
-          console.warn("LOGOUT: storage clear failed", storageError);
-        }
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      try { await AsyncStorage.clear(); } catch { /* ignore */ }
+      setFullName("User");
+      setNotificationsEnabled(true);
+      router.push("/login");
+    } catch (error) {
+      Alert.alert("Logout failed", (error as Error).message);
+    }
+  };
 
-        setFullName("User");
-        setNotificationsEnabled(true);
-
-        router.push("/login");
-        console.log("LOGOUT: navigation called");
-      } catch (error) {
-        console.error("Logout failed:", error);
-        Alert.alert("Logout failed", (error as Error).message);
-      }
-    };
+  // ─── Render menu item ──────────────────────────────────────────────────────
 
   const renderMenuItem = (item: any, index: number) => (
     <TouchableOpacity
@@ -139,8 +152,11 @@ export default function ProfileScreen() {
     </TouchableOpacity>
   );
 
+  // ─── Render ────────────────────────────────────────────────────────────────
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+
       {/* Profile Header */}
       <View style={styles.profileHeader}>
         <View style={styles.avatarWrapper}>
@@ -154,29 +170,24 @@ export default function ProfileScreen() {
         <Text style={styles.profileName}>{fullName}</Text>
         <View style={styles.verifiedRow}>
           <MaterialCommunityIcons name="shield-check" size={14} color="rgba(255,255,255,0.7)" />
-          <Text style={styles.profileEmail}>Verified User</Text>
+          <Text style={styles.profileSubtitle}>Verified User</Text>
         </View>
 
-        {/* Stats Row */}
+        {/* Stats Row — 2 stats only */}
         <View style={styles.headerStats}>
           <View style={styles.headerStat}>
-            <Text style={styles.headerStatNum}>5</Text>
+            <Text style={styles.headerStatNum}>{totalReports}</Text>
             <Text style={styles.headerStatLabel}>Reports</Text>
           </View>
           <View style={styles.headerStatDivider} />
           <View style={styles.headerStat}>
-            <Text style={styles.headerStatNum}>2</Text>
+            <Text style={styles.headerStatNum}>{resolvedReports}</Text>
             <Text style={styles.headerStatLabel}>Resolved</Text>
-          </View>
-          <View style={styles.headerStatDivider} />
-          <View style={styles.headerStat}>
-            <Text style={styles.headerStatNum}>40%</Text>
-            <Text style={styles.headerStatLabel}>Rate</Text>
           </View>
         </View>
       </View>
 
-      {/* Profile Menu */}
+      {/* Account Menu */}
       <Text style={styles.sectionLabel}>Account</Text>
       <View style={styles.menuCard}>
         {profileMenuItems.map(renderMenuItem)}
@@ -198,6 +209,8 @@ export default function ProfileScreen() {
     </ScrollView>
   );
 }
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
@@ -248,7 +261,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 16,
   },
-  profileEmail: {
+  profileSubtitle: {
     fontSize: 12,
     color: "rgba(255,255,255,0.75)",
   },
@@ -257,15 +270,15 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: 14,
     paddingVertical: 12,
-    paddingHorizontal: 24,
-    gap: 20,
+    paddingHorizontal: 32,
+    gap: 28,
   },
   headerStat: {
     alignItems: "center",
-    minWidth: 50,
+    minWidth: 60,
   },
   headerStatNum: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: "800",
     color: "#fff",
   },

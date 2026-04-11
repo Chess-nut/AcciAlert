@@ -6,7 +6,6 @@ import {
   SafeAreaView,
   TouchableOpacity,
   Switch,
-  Alert,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -38,20 +37,7 @@ export default function AdminSettingsScreen() {
   };
 
   const handleLogout = () => {
-    if (isLoggingOut) return;
-
-    Alert.alert(
-      "Exit Admin Panel",
-      "Are you sure you want to exit the Admin Panel?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Yes",
-          style: "destructive",
-          onPress: () => void performLogout(),
-        },
-      ]
-    );
+    void performLogout();
   };
 
   return (

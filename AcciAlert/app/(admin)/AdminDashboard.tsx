@@ -11,9 +11,20 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { collection, deleteDoc, doc, onSnapshot, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  onSnapshot,
+  updateDoc,
+  increment,
+  setDoc,
+} from "firebase/firestore";
 import { useRouter } from "expo-router";
-import { db } from "../../firebaseconfig";
+import { signOut } from "firebase/auth";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { db, auth } from "../../firebaseconfig";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +32,7 @@ type ReportStatus = "Pending" | "In Progress" | "Resolved";
 
 type AdminReport = {
   id: string;
+  userId: string | null;
   incidentType: string;
   severity: string;
   status: ReportStatus;
@@ -31,12 +43,12 @@ type AdminReport = {
   contactNumber: string;
 };
 
-// ─── Status config ────────────────────────────────────────────────────────────
+// ─── Status config ─────────────────────────────────────────────────────────────
 
 const STATUS_OPTIONS: { label: ReportStatus; icon: string; activeColor: string }[] = [
-  { label: "Pending",     icon: "timer-sand",     activeColor: "#F57C00" },
-  { label: "In Progress", icon: "progress-clock",  activeColor: "#1976D2" },
-  { label: "Resolved",    icon: "check-circle",    activeColor: "#2E7D32" },
+  { label: "Pending",     icon: "timer-sand",    activeColor: "#F57C00" },
+  { label: "In Progress", icon: "progress-clock", activeColor: "#1976D2" },
+  { label: "Resolved",    icon: "check-circle",   activeColor: "#2E7D32" },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -48,8 +60,18 @@ export default function AdminDashboardScreen() {
   const [filterStatus, setFilterStatus] = useState<"All" | ReportStatus>("All");
   const [searchQuery, setSearchQuery]   = useState("");
   const [savingId, setSavingId]         = useState<string | null>(null);
+  const [deletingId, setDeletingId]     = useState<string | null>(null);
 
-  // ─── Real-time Firestore listener ─────────────────────────────────────────
+  const handleAdminLogout = async () => {
+    try {
+      await signOut(auth).catch(() => {});
+      await AsyncStorage.multiRemove(["isAdmin", "adminSession"]);
+    } finally {
+      router.replace("/login" as any);
+    }
+  };
+
+  // ─── Firestore listener ────────────────────────────────────────────────────
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -57,6 +79,7 @@ export default function AdminDashboardScreen() {
       (snapshot) => {
         const mapped: AdminReport[] = snapshot.docs.map((item) => {
           const data = item.data() as {
+            userId?: string;
             incidentType?: string;
             severity?: string;
             status?: string;
@@ -85,6 +108,7 @@ export default function AdminDashboardScreen() {
 
           return {
             id:            item.id,
+            userId:        data.userId ?? null,
             incidentType:  data.incidentType ?? "Unknown Incident",
             severity:      data.severity     ?? "High",
             status,
@@ -110,7 +134,7 @@ export default function AdminDashboardScreen() {
     return () => unsubscribe();
   }, []);
 
-  // ─── Update status in Firestore ───────────────────────────────────────────
+  // ─── Update status ─────────────────────────────────────────────────────────
 
   const updateStatus = async (reportId: string, newStatus: ReportStatus) => {
     setSavingId(reportId);
@@ -118,31 +142,42 @@ export default function AdminDashboardScreen() {
       await updateDoc(doc(db, "reports", reportId), { status: newStatus });
     } catch (error) {
       console.error("Update status error:", error);
-      Alert.alert("Update failed", "Unable to update report status. Check Firestore rules.");
+      Alert.alert("Update failed", "Unable to update report status.");
     } finally {
       setSavingId(null);
     }
   };
 
-  // ─── Delete report ────────────────────────────────────────────────────────
+  // ─── Delete Fake/Spam (only for Pending) ──────────────────────────────────
+  // Also increments a "violations" counter on the user's Firestore document.
 
-  const deleteReport = async (reportId: string) => {
+  const deleteSpamReport = async (report: AdminReport) => {
+    setDeletingId(report.id);
     try {
-      await deleteDoc(doc(db, "reports", reportId));
+      // 1. If we know who submitted it, log a violation on their user doc
+      if (report.userId) {
+        const userRef = doc(db, "users", report.userId);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          // Safely increment — creates the field at 1 if it doesn't exist yet
+          await updateDoc(userRef, { violations: increment(1) });
+        } else {
+          // User doc was already deleted; create a minimal stub so the count persists
+          await setDoc(userRef, { violations: 1 }, { merge: true });
+        }
+      }
+
+      // 2. Delete the report
+      await deleteDoc(doc(db, "reports", report.id));
     } catch (error) {
-      console.error("Delete report error:", error);
-      Alert.alert("Delete failed", "Unable to remove this report.");
+      console.error("Delete spam error:", error);
+      Alert.alert("Delete failed", "Unable to remove this report. Please try again.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
-  const confirmDelete = (reportId: string) => {
-    Alert.alert("Delete Report", "Remove this report as fake/spam?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => void deleteReport(reportId) },
-    ]);
-  };
-
-  // ─── Filtered list ────────────────────────────────────────────────────────
+  // ─── Filtered list ─────────────────────────────────────────────────────────
 
   const visibleReports = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -159,14 +194,14 @@ export default function AdminDashboardScreen() {
     });
   }, [reports, filterStatus, searchQuery]);
 
-  // ─── Stats ────────────────────────────────────────────────────────────────
+  // ─── Stats ─────────────────────────────────────────────────────────────────
 
   const totalCount      = reports.length;
   const pendingCount    = reports.filter(r => r.status === "Pending").length;
   const inProgressCount = reports.filter(r => r.status === "In Progress").length;
   const resolvedCount   = reports.filter(r => r.status === "Resolved").length;
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
     <View style={styles.screen}>
@@ -177,23 +212,31 @@ export default function AdminDashboardScreen() {
           <Text style={styles.headerTitle}>Admin Dashboard</Text>
           <Text style={styles.headerSubtitle}>Manage reports and moderation</Text>
         </View>
-        <TouchableOpacity
-          style={styles.settingsBtn}
-          onPress={() => router.push("/(admin)/AdminSettings" as any)}
-        >
-          <MaterialCommunityIcons name="cog" size={22} color="#fff" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <TouchableOpacity
+            style={styles.settingsBtn}
+            onPress={() => router.push("/(admin)/AdminSettings" as any)}
+          >
+            <MaterialCommunityIcons name="cog" size={22} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.settingsBtn}
+            onPress={() => void handleAdminLogout()}
+          >
+            <MaterialCommunityIcons name="logout" size={22} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-        {/* Stats row */}
+        {/* Stats */}
         <View style={styles.statsRow}>
           {[
-            { label: "Total",       value: totalCount,      color: "#fff"     },
-            { label: "Pending",     value: pendingCount,    color: "#F57C00"  },
-            { label: "In Progress", value: inProgressCount, color: "#1976D2"  },
-            { label: "Resolved",    value: resolvedCount,   color: "#2E7D32"  },
+            { label: "Total",       value: totalCount,      color: "#fff"    },
+            { label: "Pending",     value: pendingCount,    color: "#F57C00" },
+            { label: "In Progress", value: inProgressCount, color: "#1976D2" },
+            { label: "Resolved",    value: resolvedCount,   color: "#2E7D32" },
           ].map((stat) => (
             <View key={stat.label} style={styles.statCard}>
               <Text style={styles.statLabel}>{stat.label}</Text>
@@ -203,11 +246,7 @@ export default function AdminDashboardScreen() {
         </View>
 
         {/* Status filter tabs */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterRow}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
           {(["All", "Pending", "In Progress", "Resolved"] as const).map((tab) => (
             <TouchableOpacity
               key={tab}
@@ -259,18 +298,15 @@ export default function AdminDashboardScreen() {
         ) : (
           <View style={styles.reportList}>
             {visibleReports.map((report) => {
-              const isSaving = savingId === report.id;
+              const isSaving   = savingId   === report.id;
+              const isDeleting = deletingId === report.id;
 
               return (
                 <View key={report.id} style={styles.reportCard}>
 
                   {/* Image or placeholder */}
                   {report.imageUri ? (
-                    <Image
-                      source={{ uri: report.imageUri }}
-                      style={styles.reportImage}
-                      resizeMode="cover"
-                    />
+                    <Image source={{ uri: report.imageUri }} style={styles.reportImage} resizeMode="cover" />
                   ) : (
                     <View style={styles.imagePlaceholder}>
                       <MaterialCommunityIcons name="image-off-outline" size={28} color="#374151" />
@@ -278,7 +314,7 @@ export default function AdminDashboardScreen() {
                     </View>
                   )}
 
-                  {/* Incident type + severity */}
+                  {/* Type + severity */}
                   <View style={styles.cardTitleRow}>
                     <Text style={styles.reportType} numberOfLines={1}>{report.incidentType}</Text>
                     <View style={[styles.severityBadge, { backgroundColor: getSeverityColor(report.severity) }]}>
@@ -305,7 +341,7 @@ export default function AdminDashboardScreen() {
 
                   <View style={styles.cardDivider} />
 
-                  {/* ── 3-way status control ── */}
+                  {/* Status control */}
                   <Text style={styles.statusLabel}>Update Status</Text>
                   <View style={styles.statusRow}>
                     {STATUS_OPTIONS.map((opt) => {
@@ -317,9 +353,7 @@ export default function AdminDashboardScreen() {
                             styles.statusBtn,
                             isActive && { backgroundColor: opt.activeColor, borderColor: opt.activeColor },
                           ]}
-                          onPress={() => {
-                            if (!isActive) void updateStatus(report.id, opt.label);
-                          }}
+                          onPress={() => { if (!isActive) void updateStatus(report.id, opt.label); }}
                           disabled={isSaving}
                           activeOpacity={0.8}
                         >
@@ -342,15 +376,25 @@ export default function AdminDashboardScreen() {
                     })}
                   </View>
 
-                  {/* Delete */}
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => confirmDelete(report.id)}
-                    activeOpacity={0.8}
-                  >
-                    <MaterialCommunityIcons name="delete-outline" size={15} color="#fecaca" />
-                    <Text style={styles.deleteText}>Delete Fake / Spam</Text>
-                  </TouchableOpacity>
+                  {/* Delete Fake/Spam — ONLY shown when status is Pending */}
+                  {report.status === "Pending" && (
+                    <TouchableOpacity
+                      style={[styles.deleteButton, isDeleting && { opacity: 0.6 }]}
+                      onPress={() => void deleteSpamReport(report)}
+                      disabled={isDeleting}
+                      activeOpacity={0.8}
+                    >
+                      {isDeleting ? (
+                        <ActivityIndicator size="small" color="#fecaca" />
+                      ) : (
+                        <>
+                          <MaterialCommunityIcons name="delete-outline" size={15} color="#fecaca" />
+                          <Text style={styles.deleteText}>Delete Fake / Spam</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+
                 </View>
               );
             })}
@@ -384,17 +428,12 @@ function getSeverityColor(s: string) {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  screen:  { flex: 1, backgroundColor: "#0b1220" },
+  screen: { flex: 1, backgroundColor: "#0b1220" },
 
-  // Header
   header: {
     backgroundColor: "#111827",
-    paddingHorizontal: 18,
-    paddingTop: 56,
-    paddingBottom: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    paddingHorizontal: 18, paddingTop: 56, paddingBottom: 18,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
   },
   headerTitle:    { color: "#fff", fontSize: 24, fontWeight: "800" },
   headerSubtitle: { marginTop: 4, color: "#9ca3af", fontSize: 13 },
@@ -406,7 +445,6 @@ const styles = StyleSheet.create({
 
   content: { padding: 16, paddingBottom: 40 },
 
-  // Stats
   statsRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
   statCard: {
     flex: 1, backgroundColor: "#111827", borderRadius: 12,
@@ -416,7 +454,6 @@ const styles = StyleSheet.create({
   statLabel: { color: "#64748b", fontSize: 10, fontWeight: "700", textAlign: "center" },
   statValue: { fontSize: 20, fontWeight: "800" },
 
-  // Filter chips
   filterRow: { flexDirection: "row", gap: 8, paddingBottom: 14, paddingRight: 4 },
   filterChip: {
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
@@ -426,7 +463,6 @@ const styles = StyleSheet.create({
   filterChipText:       { color: "#9ca3af", fontSize: 12, fontWeight: "700" },
   filterChipTextActive: { color: "#fff" },
 
-  // Search
   searchBar: {
     flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: "#0f172a", borderRadius: 12,
@@ -435,7 +471,6 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, color: "#e2e8f0", fontSize: 13, paddingVertical: 0 },
 
-  // Loading / empty
   loadingBox:    { alignItems: "center", paddingVertical: 40, gap: 10 },
   loadingText:   { color: "#aab1be", fontSize: 13, fontWeight: "600" },
   emptyBox:      { alignItems: "center", paddingVertical: 48, paddingHorizontal: 24 },
@@ -443,16 +478,13 @@ const styles = StyleSheet.create({
   emptyTitle:    { color: "#e2e8f0", fontSize: 16, fontWeight: "800", marginBottom: 6 },
   emptySubtitle: { color: "#64748b", fontSize: 13, textAlign: "center" },
 
-  // Report list
   reportList: { gap: 14 },
 
-  // Report card
   reportCard: {
     backgroundColor: "#111827", borderRadius: 16,
     borderWidth: 1, borderColor: "#253041", padding: 14,
   },
 
-  // Image
   reportImage: { width: "100%", height: 160, borderRadius: 12, marginBottom: 12, backgroundColor: "#0f172a" },
   imagePlaceholder: {
     width: "100%", height: 100, borderRadius: 12, marginBottom: 12,
@@ -461,36 +493,26 @@ const styles = StyleSheet.create({
   },
   imagePlaceholderText: { color: "#374151", fontSize: 12, fontWeight: "600" },
 
-  // Card content
-  cardTitleRow:   { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 8 },
-  reportType:     { color: "#fff", fontSize: 16, fontWeight: "800", flex: 1 },
-  severityBadge:  { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  cardTitleRow:      { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 8 },
+  reportType:        { color: "#fff", fontSize: 16, fontWeight: "800", flex: 1 },
+  severityBadge:     { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   severityBadgeText: { color: "#fff", fontSize: 11, fontWeight: "800" },
   reportDescription: { color: "#64748b", fontSize: 13, lineHeight: 19, marginBottom: 10 },
-  infoRow:        { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 6 },
-  infoText:       { color: "#94a3b8", fontSize: 12, fontWeight: "600", flex: 1 },
+  infoRow:           { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 6 },
+  infoText:          { color: "#94a3b8", fontSize: 12, fontWeight: "600", flex: 1 },
 
-  cardDivider:  { height: 1, backgroundColor: "#1f2937", marginVertical: 12 },
+  cardDivider: { height: 1, backgroundColor: "#1f2937", marginVertical: 12 },
 
-  // ── 3-way status control ──
   statusLabel: { color: "#9ca3af", fontSize: 11, fontWeight: "700", marginBottom: 8, letterSpacing: 0.5 },
   statusRow:   { flexDirection: "row", gap: 8, marginBottom: 12 },
   statusBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: "#0b1220",
-    borderWidth: 1,
-    borderColor: "#334155",
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 5, paddingVertical: 10, borderRadius: 10,
+    backgroundColor: "#0b1220", borderWidth: 1, borderColor: "#334155",
   },
   statusBtnText:       { color: "#64748b", fontSize: 11, fontWeight: "800" },
   statusBtnTextActive: { color: "#fff" },
 
-  // Delete
   deleteButton: {
     alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6,
     paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10,

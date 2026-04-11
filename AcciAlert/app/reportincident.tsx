@@ -9,7 +9,6 @@ import {
   TextInput,
   Platform,
   Pressable,
-  Modal,
   Alert,
   ActivityIndicator,
 } from "react-native";
@@ -39,14 +38,6 @@ const severityLevels = [
   { label: "High - Urgent",        value: "high",     color: "#F57C00" },
   { label: "Medium - Moderate",    value: "medium",   color: "#FBC02D" },
   { label: "Low - Minor",          value: "low",      color: "#1976D2" },
-];
-
-const teleportLandmarks = [
-  { name: "SM North EDSA", latitude: 14.6549, longitude: 121.0314 },
-  { name: "UP Diliman", latitude: 14.6541, longitude: 121.0646 },
-  { name: "Quezon Memorial Circle", latitude: 14.6507, longitude: 121.0488 },
-  { name: "Eastwood City", latitude: 14.6108, longitude: 121.0520 },
-  { name: "Araneta City Cubao", latitude: 14.6206, longitude: 121.0521 },
 ];
 
 const formatLocationAddress = (address: Record<string, any>) => {
@@ -89,7 +80,6 @@ export default function ReportIncidentScreen() {
   const [fullName, setFullName]           = useState("");
   const [contact, setContact]             = useState("");
   const [photoUri, setPhotoUri]           = useState<string | null>(null);
-  const [teleportPickerVisible, setTeleportPickerVisible] = useState(false);
 
   // UI state
   const [activeDropdown, setActiveDropdown] = useState<"type" | "severity" | null>(null);
@@ -192,12 +182,6 @@ export default function ReportIncidentScreen() {
     } catch {
       Alert.alert("Location unavailable", "Unable to get your current location right now.");
     }
-  };
-
-  const handleTeleportToLandmark = (landmark: { name: string; latitude: number; longitude: number }) => {
-    setLocationCoords({ latitude: landmark.latitude, longitude: landmark.longitude });
-    setLocationText(`${landmark.name}, Quezon City, Metro Manila, Philippines`);
-    setTeleportPickerVisible(false);
   };
 
   // ─── Camera ─────────────────────────────────────────────────────────────────
@@ -405,16 +389,6 @@ export default function ReportIncidentScreen() {
               <MaterialCommunityIcons name="map-marker" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
-          {__DEV__ && (
-            <TouchableOpacity
-              style={styles.teleportButton}
-              onPress={() => setTeleportPickerVisible(true)}
-              activeOpacity={0.8}
-            >
-              <MaterialCommunityIcons name="map-marker-path" size={16} color="#B71C1C" />
-              <Text style={styles.teleportButtonText}>Teleport (Dev)</Text>
-            </TouchableOpacity>
-          )}
           {locationCoords && (
             <Text style={styles.coordsHint}>
               📍 {locationCoords.latitude.toFixed(5)}, {locationCoords.longitude.toFixed(5)}
@@ -556,45 +530,6 @@ export default function ReportIncidentScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-
-      <Modal
-        visible={teleportPickerVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setTeleportPickerVisible(false)}
-      >
-        <Pressable style={styles.teleportBackdrop} onPress={() => setTeleportPickerVisible(false)}>
-          <Pressable style={styles.teleportSheet} onPress={() => {}}>
-            <View style={styles.teleportHandle} />
-            <Text style={styles.teleportTitle}>Teleport to a landmark</Text>
-            <Text style={styles.teleportSubtitle}>
-              Pick a local landmark to auto-fill latitude and longitude.
-            </Text>
-
-            <View style={styles.teleportList}>
-              {teleportLandmarks.map((landmark) => (
-                <TouchableOpacity
-                  key={landmark.name}
-                  style={styles.teleportItem}
-                  onPress={() => handleTeleportToLandmark(landmark)}
-                  activeOpacity={0.85}
-                >
-                  <View style={styles.teleportItemIcon}>
-                    <MaterialCommunityIcons name="map-marker-radius" size={18} color="#fff" />
-                  </View>
-                  <View style={styles.teleportItemText}>
-                    <Text style={styles.teleportItemName}>{landmark.name}</Text>
-                    <Text style={styles.teleportItemCoords}>
-                      {landmark.latitude.toFixed(4)}, {landmark.longitude.toFixed(4)}
-                    </Text>
-                  </View>
-                  <MaterialCommunityIcons name="chevron-right" size={20} color="#bbb" />
-                </TouchableOpacity>
-              ))}
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
@@ -618,20 +553,6 @@ const styles = StyleSheet.create({
   locationButton:{ width: 50, height: 50, borderRadius: 14, backgroundColor: "#B71C1C", justifyContent: "center", alignItems: "center" },
   coordsHint:    { marginTop: 6, fontSize: 11, color: "#B71C1C", fontWeight: "600" },
   caption:       { marginTop: 6, color: "#666", fontSize: 12 },
-  teleportButton: { marginTop: 10, flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "flex-start", backgroundColor: "#fff3f3", borderWidth: 1, borderColor: "#f3d0d0", paddingHorizontal: 12, paddingVertical: 9, borderRadius: 999 },
-  teleportButtonText: { color: "#B71C1C", fontSize: 12, fontWeight: "700" },
-
-  teleportBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.35)" },
-  teleportSheet: { backgroundColor: "#fff", borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 22, maxHeight: "70%" },
-  teleportHandle: { alignSelf: "center", width: 44, height: 4, borderRadius: 999, backgroundColor: "#ddd", marginBottom: 14 },
-  teleportTitle: { fontSize: 18, fontWeight: "800", color: "#1a1a1a", textAlign: "center" },
-  teleportSubtitle: { fontSize: 13, color: "#666", textAlign: "center", marginTop: 6, marginBottom: 16, lineHeight: 18 },
-  teleportList: { gap: 10 },
-  teleportItem: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 14, backgroundColor: "#fafafa", borderWidth: 1, borderColor: "#eee" },
-  teleportItemIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#B71C1C", justifyContent: "center", alignItems: "center" },
-  teleportItemText: { flex: 1 },
-  teleportItemName: { fontSize: 14, fontWeight: "800", color: "#1a1a1a" },
-  teleportItemCoords: { marginTop: 2, fontSize: 12, color: "#777" },
 
   // Dropdowns
   selector:         { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#fff", borderWidth: 1, borderColor: "#ddd", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 14 },
