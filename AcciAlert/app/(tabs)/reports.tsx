@@ -7,9 +7,11 @@ import {
   TouchableOpacity,
   TextInput,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function ReportsScreen() {
+  const router = useRouter();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -19,6 +21,8 @@ export default function ReportsScreen() {
       type: "Traffic Accident",
       severity: "Critical",
       location: "Gen. Luna St.",
+      latitude: 14.6091,
+      longitude: 121.0159,
       coordinates: "14.6091° N, 121.0159° E",
       description: "Multi-vehicle collision blocking two lanes",
       icon: "car-emergency",
@@ -32,6 +36,8 @@ export default function ReportsScreen() {
       type: "Pothole",
       severity: "Medium",
       location: "Jones Ave",
+      latitude: 14.5994,
+      longitude: 121.0322,
       coordinates: "14.5994° N, 121.0322° E",
       description: "Large pothole causing delays and vehicle damage",
       icon: "alert-circle",
@@ -45,6 +51,8 @@ export default function ReportsScreen() {
       type: "Congestion",
       severity: "Low",
       location: "EDSA",
+      latitude: 14.6042,
+      longitude: 121.0322,
       coordinates: "14.6042° N, 121.0322° E",
       description: "Heavy traffic volume, expect 30-min delays",
       icon: "car-multiple",
@@ -58,6 +66,8 @@ export default function ReportsScreen() {
       type: "Road Flooding",
       severity: "Medium",
       location: "España Blvd.",
+      latitude: 14.6097,
+      longitude: 120.9897,
       coordinates: "14.6097° N, 120.9897° E",
       description: "Knee-deep floodwater, road impassable",
       icon: "water",
@@ -71,6 +81,8 @@ export default function ReportsScreen() {
       type: "Road Debris",
       severity: "Low",
       location: "Makati Ave",
+      latitude: 14.5533,
+      longitude: 121.0235,
       coordinates: "14.5533° N, 121.0235° E",
       description: "Broken glass and debris scattered on roadway",
       icon: "alert-octagon",
@@ -94,6 +106,27 @@ export default function ReportsScreen() {
         report.reporter.toLowerCase().includes(query)
     );
   }, [searchQuery]);
+
+  const handleViewDetails = (report: typeof reports[0]) => {
+    router.push({
+      pathname: "/incidentdetail",
+      params: {
+        id: report.id,
+        type: report.type,
+        severity: report.severity,
+        location: report.location,
+        latitude: report.latitude,
+        longitude: report.longitude,
+        coordinates: report.coordinates,
+        description: report.description,
+        icon: report.icon,
+        time: report.time,
+        date: report.date,
+        reporter: report.reporter,
+        status: report.status,
+      },
+    });
+  };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -267,7 +300,10 @@ export default function ReportsScreen() {
                     <Text style={styles.reportDescription}>{report.description}</Text>
 
                     <View style={styles.actionButtons}>
-                      <TouchableOpacity style={styles.actionButton}>
+                      <TouchableOpacity 
+                        style={styles.actionButton}
+                        onPress={() => handleViewDetails(report)}
+                      >
                         <MaterialCommunityIcons name="eye" size={16} color="#B71C1C" />
                         <Text style={styles.actionButtonText}>View Details</Text>
                       </TouchableOpacity>

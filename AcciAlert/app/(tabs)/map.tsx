@@ -7,15 +7,17 @@ import {
   TouchableOpacity,
   TextInput,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { WebView } from "react-native-webview";
 
 export default function MapScreen() {
+  const router = useRouter();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const webViewRef = useRef<any>(null);
 
-  const incidents = [
+  const incidents = useMemo(() => [
     {
       id: 1,
       type: "Traffic Accident",
@@ -27,6 +29,9 @@ export default function MapScreen() {
       description: "Multi-vehicle collision blocking two lanes",
       icon: "car-emergency",
       time: "2 hrs ago",
+      date: "04/11/2026",
+      reporter: "John Doe",
+      status: "Reported",
     },
     {
       id: 2,
@@ -39,6 +44,9 @@ export default function MapScreen() {
       description: "Large pothole causing delays and vehicle damage",
       icon: "alert-circle",
       time: "1 hr ago",
+      date: "04/11/2026",
+      reporter: "Jane Smith",
+      status: "In Review",
     },
     {
       id: 3,
@@ -51,6 +59,9 @@ export default function MapScreen() {
       description: "Heavy traffic volume, expect 30-min delays",
       icon: "car-multiple",
       time: "30 min ago",
+      date: "04/11/2026",
+      reporter: "Traffic Department",
+      status: "Resolved",
     },
     {
       id: 4,
@@ -63,8 +74,26 @@ export default function MapScreen() {
       description: "Knee-deep floodwater, road impassable",
       icon: "water",
       time: "45 min ago",
+      date: "04/11/2026",
+      reporter: "City Council",
+      status: "In Review",
     },
-  ];
+    {
+      id: 5,
+      type: "Road Debris",
+      severity: "Low",
+      location: "Makati Ave",
+      latitude: 14.5533,
+      longitude: 121.0235,
+      coordinates: "14.5533° N, 121.0235° E",
+      description: "Broken glass and debris scattered on roadway",
+      icon: "alert-octagon",
+      time: "15 min ago",
+      date: "04/11/2026",
+      reporter: "Anonymous",
+      status: "Reported",
+    },
+  ], []);
 
   // Filter incidents based on search query
   const filteredIncidents = useMemo(() => {
@@ -76,7 +105,28 @@ export default function MapScreen() {
       incident.type.toLowerCase().includes(query) ||
       incident.description.toLowerCase().includes(query)
     );
-  }, [searchQuery]);
+  }, [searchQuery, incidents]);
+
+  const handleViewFullReport = (incident: typeof incidents[0]) => {
+    router.push({
+      pathname: "/incidentdetail",
+      params: {
+        id: incident.id,
+        type: incident.type,
+        severity: incident.severity,
+        location: incident.location,
+        latitude: incident.latitude,
+        longitude: incident.longitude,
+        coordinates: incident.coordinates,
+        description: incident.description,
+        icon: incident.icon,
+        time: incident.time,
+        date: incident.date,
+        reporter: incident.reporter,
+        status: incident.status,
+      },
+    });
+  };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -250,7 +300,10 @@ export default function MapScreen() {
                     📍 {incident.coordinates}
                   </Text>
                   <Text style={styles.incidentDescription}>{incident.description}</Text>
-                  <TouchableOpacity style={styles.detailsButton}>
+                  <TouchableOpacity 
+                    style={styles.detailsButton}
+                    onPress={() => handleViewFullReport(incident)}
+                  >
                     <Text style={styles.detailsButtonText}>View Full Report</Text>
                     <MaterialCommunityIcons name="arrow-right" size={16} color="#B71C1C" />
                   </TouchableOpacity>
