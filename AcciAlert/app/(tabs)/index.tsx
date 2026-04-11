@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Linking,
-  Alert,
   Image,
+  Modal,
+  Pressable,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -49,6 +49,12 @@ export default function HomeScreen() {
   const [recentReports, setRecentReports] = useState<RecentReport[]>([]);
   const [reportsLoading, setReportsLoading] = useState(true);
   const [totalReports, setTotalReports] = useState(0);
+  const [isCallActive, setIsCallActive] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
+  const [callerName, setCallerName] = useState("");
+  const [callerNumber, setCallerNumber] = useState("");
+  const [callSeconds, setCallSeconds] = useState(0);
+  const connectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const emergencyItems = [
     { emoji: "🚨", label: "Emergency 911", number: "911" },
@@ -110,17 +116,55 @@ export default function HomeScreen() {
     return () => unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!isCallActive || !isConnected) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setCallSeconds((currentSeconds) => currentSeconds + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isCallActive, isConnected]);
+
   // ─── Helpers ───────────────────────────────────────────────────────────────
 
-  const handleCall = (number: string, label: string) => {
-    Alert.alert(
-      `Call ${label}`,
-      `Do you want to call ${number}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Call", onPress: () => Linking.openURL(`tel:${number}`) },
-      ]
-    );
+  const startDummyCall = (name: string, number: string) => {
+    if (connectionTimeoutRef.current) {
+      clearTimeout(connectionTimeoutRef.current);
+      connectionTimeoutRef.current = null;
+    }
+
+    setCallerName(name);
+    setCallerNumber(number);
+    setCallSeconds(0);
+    setIsConnected(false);
+    setIsCallActive(true);
+
+    connectionTimeoutRef.current = setTimeout(() => {
+      setIsConnected(true);
+      connectionTimeoutRef.current = null;
+    }, 1200);
+  };
+
+  const endDummyCall = () => {
+    if (connectionTimeoutRef.current) {
+      clearTimeout(connectionTimeoutRef.current);
+      connectionTimeoutRef.current = null;
+    }
+
+    setIsCallActive(false);
+    setIsConnected(false);
+    setCallerName("");
+    setCallerNumber("");
+    setCallSeconds(0);
+  };
+
+  const formatCallTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
   };
 
   const getIncidentEmoji = (incidentType: string) => {
@@ -171,6 +215,14 @@ export default function HomeScreen() {
     return "timer-sand";
   };
 
+  useEffect(() => {
+    return () => {
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <View style={styles.containerWrapper}>
@@ -187,7 +239,7 @@ export default function HomeScreen() {
               <Text style={styles.tagline}>Road Safety Response</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.sosButton} onPress={() => handleCall("911", "Emergency")}>
+          <TouchableOpacity style={styles.sosButton} onPress={() => startDummyCall("Emergency", "911")}>
             <MaterialCommunityIcons name="alert-circle" size={20} color="#fff" />
             <Text style={styles.sosText}>SOS</Text>
           </TouchableOpacity>
@@ -220,7 +272,7 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   key={item.label}
                   style={styles.emergencyButton}
-                  onPress={() => handleCall(item.number, item.label)}
+                  onPress={() => startDummyCall(item.label, item.number)}
                   activeOpacity={0.85}
                 >
                   <Text style={styles.emergencyEmoji}>{item.emoji}</Text>
@@ -309,6 +361,42 @@ export default function HomeScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
+      <Modal visible={isCallActive} animationType="slide" transparent={false} onRequestClose={endDummyCall}>
+        <View style={styles.callModalContainer}>
+          <View style={styles.callModalTop}>
+            <Text style={styles.callLabel}>Calling {callerName}...</Text>
+            <Text style={styles.callNumber}>{callerNumber}</Text>
+            <View style={styles.connectionRow}>
+              <View style={[styles.connectionDot, isConnected && styles.connectionDotActive]} />
+              <Text style={styles.connectionText}>{isConnected ? "Connected" : "Connecting..."}</Text>
+            </View>
+            <Text style={styles.callTimer}>{formatCallTime(callSeconds)}</Text>
+          </View>
+
+          <View style={styles.callControlsRow}>
+            <View style={styles.callControlButton}>
+              <MaterialCommunityIcons name="microphone-off" size={24} color="#fff" />
+              <Text style={styles.callControlText}>Mute</Text>
+            </View>
+            <View style={styles.callControlButton}>
+              <MaterialCommunityIcons name="dialpad" size={24} color="#fff" />
+              <Text style={styles.callControlText}>Keypad</Text>
+            </View>
+            <View style={styles.callControlButton}>
+              <MaterialCommunityIcons name="volume-high" size={24} color="#fff" />
+              <Text style={styles.callControlText}>Speaker</Text>
+            </View>
+          </View>
+
+          <View style={styles.endCallSection}>
+            <Pressable style={styles.endCallButton} onPress={endDummyCall}>
+              <MaterialCommunityIcons name="phone-hangup" size={28} color="#fff" />
+            </Pressable>
+            <Text style={styles.endCallLabel}>End Call</Text>
+          </View>
+        </View>
+      </Modal>
+
       {/* FAB — Report Incident */}
       <TouchableOpacity style={styles.fab} onPress={() => router.push("/reportincident" as any)}>
         <MaterialCommunityIcons name="plus" size={32} color="#fff" />
@@ -322,6 +410,99 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   containerWrapper: { flex: 1 },
   container: { flex: 1, backgroundColor: "#f5f5f5" },
+  callModalContainer: {
+    flex: 1,
+    backgroundColor: "#1f1f1f",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 80,
+    paddingBottom: 48,
+  },
+  callModalTop: {
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  callLabel: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#fff",
+    textAlign: "center",
+  },
+  callNumber: {
+    marginTop: 10,
+    fontSize: 16,
+    color: "rgba(255,255,255,0.7)",
+  },
+  connectionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 18,
+  },
+  connectionDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#757575",
+  },
+  connectionDotActive: {
+    backgroundColor: "#43a047",
+  },
+  connectionText: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.85)",
+    fontWeight: "600",
+  },
+  callTimer: {
+    marginTop: 18,
+    fontSize: 54,
+    fontWeight: "700",
+    color: "#fff",
+    letterSpacing: 1,
+  },
+  callControlsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "84%",
+    maxWidth: 360,
+  },
+  callControlButton: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  callControlText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: "#fff",
+    fontWeight: "600",
+  },
+  endCallSection: {
+    alignItems: "center",
+  },
+  endCallButton: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: "#d32f2f",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  endCallLabel: {
+    marginTop: 10,
+    fontSize: 14,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.85)",
+  },
 
   // Header
   header: {

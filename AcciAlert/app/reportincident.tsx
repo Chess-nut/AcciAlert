@@ -40,6 +40,32 @@ const severityLevels = [
   { label: "Low - Minor",          value: "low",      color: "#1976D2" },
 ];
 
+const formatLocationAddress = (address: Record<string, any>) => {
+  const streetName =
+    address.road ||
+    address.street ||
+    address.pedestrian ||
+    address.residential ||
+    address.footway ||
+    address.path ||
+    address.cycleway ||
+    "";
+
+  const streetLine = [address.house_number, streetName].filter(Boolean).join(" ");
+  const localArea = [
+    address.barangay,
+    address.suburb,
+    address.neighbourhood,
+    address.village,
+    address.quarter,
+  ].find(Boolean) || "";
+  const cityLine = address.city || address.town || address.municipality || address.county || "";
+  const country = address.country || "";
+
+  const parts = [streetLine, localArea, cityLine, country].filter(Boolean);
+  return parts.join(", ");
+};
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ReportIncidentScreen() {
@@ -135,12 +161,8 @@ export default function ReportIncidentScreen() {
         );
         const data = await response.json();
         if (data?.address) {
-          const addr   = data.address;
-          const street = [addr.house_number, addr.road].filter(Boolean).join(" ");
-          const city   = addr.city || addr.town || addr.municipality || addr.suburb || "";
-          const region = addr.state || addr.province || "";
-          const parts  = [street, city, region].filter(Boolean);
-          if (parts.length > 0) { setLocationText(parts.join(", ")); return; }
+          const formattedAddress = formatLocationAddress(data.address);
+          if (formattedAddress) { setLocationText(formattedAddress); return; }
         }
       } catch { /* fall through */ }
 
@@ -149,7 +171,9 @@ export default function ReportIncidentScreen() {
       const place  = places[0];
       if (place) {
         const streetParts = [place.streetNumber, place.street].filter(Boolean).join(" ");
-        const parts = [streetParts, place.city, place.region].filter(Boolean);
+        const localArea = [place.district, place.subregion, place.region].find(Boolean) || "";
+        const country = place.isoCountryCode || "";
+        const parts = [streetParts, localArea, place.city, country].filter(Boolean);
         if (parts.length > 0) { setLocationText(parts.join(", ")); return; }
       }
 

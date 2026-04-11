@@ -58,20 +58,6 @@ export default function ProfileScreen() {
       color: "#2E7D32",
       bgColor: "#e8f5e9",
     },
-    {
-      icon: "car",
-      label: "Vehicle Information",
-      description: "Add or update vehicle details",
-      color: "#E65100",
-      bgColor: "#fff3e0",
-    },
-    {
-      icon: "hospital-box",
-      label: "Medical Information",
-      description: "Store blood type, allergies, conditions",
-      color: "#B71C1C",
-      bgColor: "#ffebee",
-    },
   ];
 
   const supportMenuItems = [
@@ -82,13 +68,6 @@ export default function ProfileScreen() {
       color: "#7B1FA2",
       bgColor: "#f3e5f5",
       toggle: true,
-    },
-    {
-      icon: "lifebuoy",
-      label: "Help Center",
-      description: "Get help and support",
-      color: "#0277BD",
-      bgColor: "#e1f5fe",
     },
     {
       icon: "file-document",
@@ -109,13 +88,6 @@ export default function ProfileScreen() {
       label: "Privacy Policy",
       description: "Your privacy matters to us",
       color: "#555",
-      bgColor: "#f5f5f5",
-    },
-    {
-      icon: "information",
-      label: "App Version",
-      description: "v2.4.1 (build 241)",
-      color: "#888",
       bgColor: "#f5f5f5",
     },
   ];
