@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -7,9 +7,11 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { WebView } from "react-native-webview";
 
 export default function MapScreen() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const webViewRef = useRef<any>(null);
 
   const incidents = [
     {
@@ -17,6 +19,8 @@ export default function MapScreen() {
       type: "Traffic Accident",
       severity: "Critical",
       location: "Gen. Luna St.",
+      latitude: 14.6091,
+      longitude: 121.0159,
       coordinates: "14.6091° N, 121.0159° E",
       description: "Multi-vehicle collision blocking two lanes",
       icon: "car-emergency",
@@ -27,6 +31,8 @@ export default function MapScreen() {
       type: "Pothole",
       severity: "Medium",
       location: "Jones Ave",
+      latitude: 14.5994,
+      longitude: 121.0322,
       coordinates: "14.5994° N, 121.0322° E",
       description: "Large pothole causing delays and vehicle damage",
       icon: "alert-circle",
@@ -37,6 +43,8 @@ export default function MapScreen() {
       type: "Congestion",
       severity: "Low",
       location: "EDSA",
+      latitude: 14.6042,
+      longitude: 121.0322,
       coordinates: "14.6042° N, 121.0322° E",
       description: "Heavy traffic volume, expect 30-min delays",
       icon: "car-multiple",
@@ -47,6 +55,8 @@ export default function MapScreen() {
       type: "Road Flooding",
       severity: "Medium",
       location: "España Blvd.",
+      latitude: 14.6097,
+      longitude: 120.9897,
       coordinates: "14.6097° N, 120.9897° E",
       description: "Knee-deep floodwater, road impassable",
       icon: "water",
@@ -72,45 +82,81 @@ export default function MapScreen() {
     }
   };
 
-  const legendItems = [
-    { label: "Critical", color: "#B71C1C" },
-    { label: "Medium", color: "#E65100" },
-    { label: "Low", color: "#F9A825" },
-  ];
+  const generateMapHTML = () => {
+    const markersJSON = JSON.stringify(
+      incidents.map((incident) => ({
+        id: incident.id,
+        lat: incident.latitude,
+        lng: incident.longitude,
+        title: incident.type,
+        description: incident.location,
+        severity: incident.severity,
+        color: getSeverityColor(incident.severity),
+      }))
+    );
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+        <style>
+          * { margin: 0; padding: 0; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+          #map { height: 100vh; width: 100%; }
+          .leaflet-popup-content { font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div id="map"></div>
+        <script>
+          const markers = ${markersJSON};
+          const defaultCenter = [14.6091, 121.0159];
+          
+          const map = L.map('map').setView(defaultCenter, 13);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+          }).addTo(map);
+
+          markers.forEach(marker => {
+            const circleMarker = L.circleMarker([marker.lat, marker.lng], {
+              radius: 12,
+              fillColor: marker.color,
+              color: '#fff',
+              weight: 2,
+              opacity: 1,
+              fillOpacity: 0.9
+            }).addTo(map);
+
+            circleMarker.bindPopup(\`
+              <div style="text-align: center; min-width: 150px;">
+                <strong>\${marker.title}</strong><br>
+                <small style="color: #666;">\${marker.description}</small><br>
+                <small style="color: \${marker.color}; font-weight: bold;">\${marker.severity}</small>
+              </div>
+            \`);
+          });
+        </script>
+      </body>
+      </html>
+    `;
+  };
 
   return (
     <View style={styles.container}>
-      {/* Map Placeholder */}
-      <View style={styles.mapContainer}>
-        {/* Simulated map pins */}
-        <MaterialCommunityIcons name="map" size={60} color="#d0d0d0" style={styles.mapBg} />
-        <Text style={styles.mapTitle}>Incident Map</Text>
-        <Text style={styles.mapSubtext}>Quezon City, Metro Manila</Text>
-
-        {/* Mock pins */}
-        <View style={[styles.pin, { top: 60, left: '30%', backgroundColor: '#B71C1C' }]}>
-          <MaterialCommunityIcons name="alert-octagon" size={14} color="#fff" />
-        </View>
-        <View style={[styles.pin, { top: 100, left: '60%', backgroundColor: '#E65100' }]}>
-          <MaterialCommunityIcons name="alert-circle" size={14} color="#fff" />
-        </View>
-        <View style={[styles.pin, { top: 40, left: '55%', backgroundColor: '#F9A825' }]}>
-          <MaterialCommunityIcons name="car-multiple" size={14} color="#fff" />
-        </View>
-        <View style={[styles.pin, { top: 120, left: '25%', backgroundColor: '#E65100' }]}>
-          <MaterialCommunityIcons name="water" size={14} color="#fff" />
-        </View>
-
-        {/* Legend */}
-        <View style={styles.legend}>
-          {legendItems.map((l) => (
-            <View key={l.label} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: l.color }]} />
-              <Text style={styles.legendText}>{l.label}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
+      {/* OpenStreetMap */}
+      <WebView
+        ref={webViewRef}
+        style={styles.mapContainer}
+        source={{ html: generateMapHTML() }}
+        scrollEnabled={true}
+        zoomEnabled={true}
+        scalesPageToFit={true}
+      />
 
       {/* Incidents List */}
       <ScrollView style={styles.incidentsList} showsVerticalScrollIndicator={false}>
@@ -190,65 +236,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#f5f5f5",
   },
   mapContainer: {
-    height: 200,
+    height: 300,
     backgroundColor: "#e8e8e8",
-    justifyContent: "center",
-    alignItems: "center",
     borderBottomColor: "#d0d0d0",
     borderBottomWidth: 1,
-    position: "relative",
     overflow: "hidden",
-  },
-  mapBg: {
-    position: "absolute",
-    opacity: 0.3,
-  },
-  mapTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#888",
-  },
-  mapSubtext: {
-    fontSize: 12,
-    color: "#aaa",
-    marginTop: 4,
-  },
-  pin: {
-    position: "absolute",
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 2,
-    borderColor: "#fff",
-    elevation: 4,
-  },
-  legend: {
-    position: "absolute",
-    bottom: 10,
-    right: 12,
-    flexDirection: "row",
-    gap: 10,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  legendText: {
-    fontSize: 10,
-    color: "#555",
-    fontWeight: "600",
   },
   incidentsList: {
     flex: 1,

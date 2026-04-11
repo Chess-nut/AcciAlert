@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity, SafeAreaView,
-  StatusBar, TextInput, KeyboardAvoidingView, Platform,
-  ScrollView, Dimensions, ActivityIndicator, Alert, Modal, Pressable,
+  StatusBar, TextInput, Dimensions, ActivityIndicator, Alert, Modal, Pressable,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -13,20 +12,20 @@ const { height } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const router = useRouter();
+  
+  // Refs for imperative focus management
 
   // Login state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [isError, setIsError] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Forgot password modal state
-  const [forgotModalVisible, setForgotModalVisible] = useState(false);
+  const [, setForgotModalVisible] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [resetEmailError, setResetEmailError] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
@@ -118,7 +117,7 @@ export default function LoginScreen() {
 
       {/* ── Forgot Password Modal ── */}
       <Modal
-        visible={forgotModalVisible}
+        visible={false}
         transparent
         animationType="fade"
         onRequestClose={closeForgotModal}
@@ -135,7 +134,7 @@ export default function LoginScreen() {
                 </View>
                 <Text style={styles.modalTitle}>Reset Password</Text>
                 <Text style={styles.modalSubtitle}>
-                  Enter the email address linked to your account and we'll send you a reset link.
+                  Enter the email address linked to your account and we&apos;ll send you a reset link.
                 </Text>
 
                 <Text style={styles.modalLabel}>Email Address</Text>
@@ -213,9 +212,8 @@ export default function LoginScreen() {
       </Modal>
 
       {/* ── Main Login Screen ── */}
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
+        <View style={styles.container}>
           {/* Header */}
           <View style={styles.headerBlock}>
             <View style={styles.bgCircle1} />
@@ -236,8 +234,8 @@ export default function LoginScreen() {
           <View style={styles.card}>
             {/* Email */}
             <Text style={styles.label}>Email Address</Text>
-            <View style={[styles.inputWrapper, emailFocused && styles.inputWrapperFocused, !!emailError && styles.inputWrapperError]}>
-              <MaterialCommunityIcons name={"email-outline" as any} size={20} color={emailError ? '#B71C1C' : emailFocused ? '#B71C1C' : '#aaa'} style={styles.inputIcon} />
+            <View style={[styles.inputWrapper, !!emailError && styles.inputWrapperError]}>
+              <MaterialCommunityIcons name={"email-outline" as any} size={20} color={emailError ? '#B71C1C' : '#aaa'} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="you@example.com"
@@ -247,8 +245,6 @@ export default function LoginScreen() {
                 autoCorrect={false}
                 value={email}
                 onChangeText={(t) => { setEmail(t); setEmailError(''); }}
-                onFocus={() => setEmailFocused(true)}
-                onBlur={() => setEmailFocused(false)}
               />
             </View>
             {!!emailError && (
@@ -263,12 +259,11 @@ export default function LoginScreen() {
             <View
               style={[
                 styles.inputWrapper,
-                passwordFocused && styles.inputWrapperFocused,
                 !!passwordError && styles.inputWrapperError,
                 isError && styles.passwordInlineErrorWrapper,
               ]}
             >
-              <MaterialCommunityIcons name={"lock-outline" as any} size={20} color={(passwordError || isError) ? '#B71C1C' : passwordFocused ? '#B71C1C' : '#aaa'} style={styles.inputIcon} />
+              <MaterialCommunityIcons name={"lock-outline" as any} size={20} color={(passwordError || isError) ? '#B71C1C' : '#aaa'} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="Enter your password"
@@ -276,8 +271,6 @@ export default function LoginScreen() {
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={(t) => { setPassword(t); setPasswordError(''); setIsError(false); }}
-                onFocus={() => setPasswordFocused(true)}
-                onBlur={() => setPasswordFocused(false)}
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
                 <MaterialCommunityIcons name={(showPassword ? 'eye-off-outline' : 'eye-outline') as any} size={20} color="#aaa" />
@@ -332,7 +325,7 @@ export default function LoginScreen() {
 
             {/* Sign up link */}
             <View style={styles.signupRow}>
-              <Text style={styles.signupPrompt}>Don't have an account? </Text>
+              <Text style={styles.signupPrompt}>Don&apos;t have an account? </Text>
               <TouchableOpacity onPress={() => router.push('/signup' as any)}>
                 <Text style={styles.signupLink}>Sign up</Text>
               </TouchableOpacity>
@@ -340,14 +333,14 @@ export default function LoginScreen() {
           </View>
 
           <Text style={styles.footer}>By signing in, you agree to our Terms of Service & Privacy Policy</Text>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#B71C1C' },
+  container: { flex: 1, justifyContent: 'flex-start' },
   scroll: { flexGrow: 1 },
 
   // ── Modal ──────────────────────────────────────────────────────────────────
