@@ -135,7 +135,7 @@ export default function LoginScreen() {
                 </View>
                 <Text style={styles.modalTitle}>Reset Password</Text>
                 <Text style={styles.modalSubtitle}>
-                  Enter the email address linked to your account and we'll send you a reset link.
+                  Enter the email address linked to your account and we&apos;ll send you a reset link.
                 </Text>
 
                 <Text style={styles.modalLabel}>Email Address</Text>
@@ -332,7 +332,7 @@ export default function LoginScreen() {
 
             {/* Sign up link */}
             <View style={styles.signupRow}>
-              <Text style={styles.signupPrompt}>Don't have an account? </Text>
+              <Text style={styles.signupPrompt}>Don&apos;t have an account? </Text>
               <TouchableOpacity onPress={() => router.push('/signup' as any)}>
                 <Text style={styles.signupLink}>Sign up</Text>
               </TouchableOpacity>
