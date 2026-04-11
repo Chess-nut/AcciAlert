@@ -20,3 +20,18 @@ setting up firebase
  - npx install firebase
  - npx expo install @react-native-async-storage/async-storage
  - npx expo install react-native-toast-message
+
+
+ Install this
+ - npx expo install @react-native-async-storage/async-storage react-native-get-random-values uuid
+ - npm install expo-location
+ - npm install expo-image-picker
+ - npm install @react-native-async-storage/async-storage
+ - npm install @supabase/supabase-js
+ - npm install -D expo-module-scripts@55.0.2
+ - npm install expo-image-picker@~17.0.10 expo-location@~19.0.8 react-native-webview@13.15.0
+
+
+
+ https://console.firebase.google.com/project/accialert-289dd/overview
+ https://supabase.com/dashboard/project/pyvotjsmkdegnqfbtfbb

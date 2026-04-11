@@ -7,8 +7,22 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebaseconfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { height } = Dimensions.get('window');
+
+const ADMIN_PASSWORD = 'accialert123';
+const ADMIN_EMAIL_ALIASES = [
+  'acciaclert123',
+  'accialert123',
+  'acciaclert123@accialert.com',
+  'accialert123@accialert.com',
+];
+
+const isAdminShortcutCredentials = (email: string, password: string) => {
+  const normalizedEmail = email.trim().toLowerCase();
+  return ADMIN_EMAIL_ALIASES.includes(normalizedEmail) && password === ADMIN_PASSWORD;
+};
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -33,6 +47,11 @@ export default function LoginScreen() {
 
   // ─── Login ────────────────────────────────────────────────────────────────
   const validate = () => {
+    const isAdminShortcut = isAdminShortcutCredentials(email, password);
+    if (isAdminShortcut) {
+      return true;
+    }
+
     let valid = true;
     setEmailError('');
     setPasswordError('');
@@ -46,6 +65,13 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!validate()) return;
+
+    if (isAdminShortcutCredentials(email, password)) {
+      await AsyncStorage.setItem('isAdmin', 'true');
+      router.replace('/(admin)/AdminDashboard' as any);
+      return;
+    }
+
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
