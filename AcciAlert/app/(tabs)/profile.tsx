@@ -70,18 +70,12 @@ export default function ProfileScreen() {
       toggle: true,
     },
     {
-      icon: "file-document",
-      label: "Report an Issue",
-      description: "Tell us about a problem",
-      color: "#558B2F",
-      bgColor: "#f1f8e9",
-    },
-    {
       icon: "file-multiple",
       label: "Terms & Conditions",
       description: "Read our terms and policies",
       color: "#555",
       bgColor: "#f5f5f5",
+      route: "/TermsAndConditions",
     },
     {
       icon: "shield-lock",
@@ -89,6 +83,7 @@ export default function ProfileScreen() {
       description: "Your privacy matters to us",
       color: "#555",
       bgColor: "#f5f5f5",
+      route: "/PrivacyPolicy",
     },
   ];
 
@@ -122,6 +117,7 @@ export default function ProfileScreen() {
       style={styles.menuItem}
       onPress={() => {
         if (item.toggle) setNotificationsEnabled(!notificationsEnabled);
+        if (item.route) router.push(item.route);
       }}
       activeOpacity={0.75}
     >
