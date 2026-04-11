@@ -3,13 +3,13 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAi6tdoRIjagl7jOrAHw6Sd_K_vz8pH1ZI",
-  authDomain: "accialert-289dd.firebaseapp.com",
-  projectId: "accialert-289dd",
-  storageBucket: "accialert-289dd.firebasestorage.app",
-  messagingSenderId: "979292157192",
-  appId: "1:979292157192:web:e8a8325b03251dea9be8bd",
-  measurementId: "G-Q6K3VYXB93"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 const app = initializeApp(firebaseConfig);
